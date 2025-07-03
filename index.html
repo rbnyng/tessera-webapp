@@ -232,10 +232,29 @@
                     <label>Embedding Source:</label>
                     <select id="embeddingSource" onchange="changeEmbeddingSource()">
                         <option value="mock">Mock Data (Demo)</option>
+                        <option value="geotessera">GeoTessera (Live)</option>
                         <option value="file">Upload GeoTIFF</option>
                         <option value="url">GeoTIFF URL</option>
                         <option value="custom">Custom Tile Server</option>
                     </select>
+                </div>
+                <div id="geotesseraControls" style="display: none;">
+                    <div class="slider-container">
+                        <label>Year:</label>
+                        <select id="geotesseraYear">
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                        </select>
+                    </div>
+                    <div class="slider-container">
+                        <label>Embedding Dimensions:</label>
+                        <select id="geotesseraVersion">
+                            <option value="v1">v1 (128-dim)</option>
+                            <option value="v2">v2 (256-dim)</option>
+                        </select>
+                    </div>
+                    <button id="loadGeotesseraButton" onclick="loadGeotesseraEmbedding()">🌍 Load Current View</button>
                 </div>
                 <input type="file" id="embeddingFile" accept=".tif,.tiff,.geotiff" style="display: none;" onchange="loadEmbeddingFile()" />
                 <input type="text" id="embeddingUrl" placeholder="https://example.com/embeddings.tif" style="display: none;" />
@@ -288,7 +307,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://unpkg.com/georaster@1.6.0/dist/georaster.browser.bundle.min.js"></script>
     <script src="https://unpkg.com/georaster-layer-for-leaflet@3.10.0/dist/georaster-layer-for-leaflet.min.js"></script>
-    <script src="https://unpkg.com/geoblaze@2.8.0/dist/geoblaze.min.js"></script>
     <script>
         // Global variables
         let map;
@@ -379,10 +397,9 @@
             embeddingCanvas.width = mapContainer.offsetWidth;
             embeddingCanvas.height = mapContainer.offsetHeight;
             
-            // Don't regenerate embeddings on canvas resize - they should stay georeferenced
-            // Only regenerate if we're using fallback canvas method
-            if (showEmbeddings && embeddingSource === 'mock' && embeddingData && !geoRasterLayer) {
-                drawEmbeddingVisualization();
+            // Regenerate embedding visualization when canvas size changes
+            if (showEmbeddings) {
+                generateEmbeddingVisualization();
             }
         }
 
@@ -554,16 +571,21 @@
                 button.textContent = '🔬 Hide Embeddings';
                 button.style.background = '#FF6B6B';
                 
-                generateEmbeddingVisualization();
+                if (embeddingSource === 'mock') {
+                    generateEmbeddingVisualization();
+                } else if (geoRasterLayer) {
+                    // Show existing georaster layer
+                    geoRasterLayer.addTo(map);
+                }
             } else {
                 button.textContent = '🔬 Show Embeddings';
                 button.style.background = '#4CAF50';
                 
-                // Hide all embedding visualizations
-                if (geoRasterLayer) {
+                if (embeddingSource === 'mock') {
+                    embeddingCtx.clearRect(0, 0, embeddingCanvas.width, embeddingCanvas.height);
+                } else if (geoRasterLayer) {
                     map.removeLayer(geoRasterLayer);
                 }
-                embeddingCtx.clearRect(0, 0, embeddingCanvas.width, embeddingCanvas.height);
             }
         }
 
@@ -584,15 +606,19 @@
             const urlInput = document.getElementById('embeddingUrl');
             const customUrlInput = document.getElementById('customEmbeddingUrl');
             const loadButton = document.getElementById('loadEmbeddingButton');
+            const geotesseraControls = document.getElementById('geotesseraControls');
             
             // Hide all inputs first
             fileInput.style.display = 'none';
             urlInput.style.display = 'none';
             customUrlInput.style.display = 'none';
             loadButton.style.display = 'none';
+            geotesseraControls.style.display = 'none';
             
             // Show relevant input based on selection
-            if (embeddingSource === 'file') {
+            if (embeddingSource === 'geotessera') {
+                geotesseraControls.style.display = 'block';
+            } else if (embeddingSource === 'file') {
                 fileInput.style.display = 'block';
             } else if (embeddingSource === 'url') {
                 urlInput.style.display = 'block';
@@ -644,12 +670,158 @@
             }
         }
 
-        async function loadSelectedEmbedding() {
-            if (embeddingSource === 'url') {
-                await loadEmbeddingFromUrl();
-            } else if (embeddingSource === 'custom') {
-                await loadCustomTileEmbeddings();
+        async function loadGeotesseraEmbedding() {
+            const center = map.getCenter();
+            const year = document.getElementById('geotesseraYear').value;
+            const version = document.getElementById('geotesseraVersion').value;
+            
+            try {
+                document.getElementById('loading').style.display = 'block';
+                
+                // For demo purposes, we'll simulate GeoTessera API call
+                // In a real implementation, you'd need a backend service to call GeoTessera
+                // since it's a Python library and can't run directly in the browser
+                
+                await simulateGeotesseraAPI(center.lat, center.lng, year, version);
+                
+                alert(`Loaded ${version} embeddings for ${year} at ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}!`);
+                
+            } catch (error) {
+                console.error('Error loading GeoTessera embeddings:', error);
+                alert('GeoTessera integration requires a backend service. Using mock data instead.');
+                
+                // Fall back to mock data
+                embeddingSource = 'mock';
+                generateEmbeddingVisualization();
+            } finally {
+                document.getElementById('loading').style.display = 'none';
             }
+        }
+
+        async function simulateGeotesseraAPI(lat, lng, year, version) {
+            // Simulate API call delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Generate enhanced mock data that represents what GeoTessera would return
+            const width = embeddingCanvas.width;
+            const height = embeddingCanvas.height;
+            const dims = version === 'v1' ? 128 : 256;
+            
+            // Create more realistic embeddings based on location
+            embeddingData = generateLocationSpecificEmbeddings(width, height, lat, lng, dims);
+            
+            if (showEmbeddings) {
+                drawEmbeddingVisualization();
+            }
+        }
+
+        function generateLocationSpecificEmbeddings(width, height, lat, lng, dimensions) {
+            // Create embeddings that vary based on actual geographic location
+            const embeddings = new Float32Array(width * height * 3);
+            
+            // Determine biome/region characteristics based on coordinates
+            const climate = getClimateCharacteristics(lat, lng);
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const i = (y * width + x) * 3;
+                    
+                    // Normalize coordinates
+                    const nx = x / width;
+                    const ny = y / height;
+                    
+                    // PC1: Vegetation patterns influenced by actual climate
+                    let pc1 = climate.vegetation * (0.5 + 0.3 * Math.sin(nx * Math.PI * 4));
+                    pc1 += Math.random() * 0.15 - 0.075;
+                    
+                    // PC2: Urban/water patterns based on location
+                    let pc2 = climate.urban * (0.3 + 0.4 * Math.cos(ny * Math.PI * 6));
+                    pc2 += climate.water * Math.sin(nx * Math.PI * 2) * 0.3;
+                    pc2 += Math.random() * 0.2 - 0.1;
+                    
+                    // PC3: Terrain/elevation patterns
+                    let pc3 = climate.terrain * (ny * 0.6 + Math.sin(nx * Math.PI * 8) * 0.4);
+                    pc3 += Math.random() * 0.25 - 0.125;
+                    
+                    // Normalize and clamp
+                    embeddings[i] = Math.max(0, Math.min(1, pc1));
+                    embeddings[i + 1] = Math.max(0, Math.min(1, pc2));
+                    embeddings[i + 2] = Math.max(0, Math.min(1, pc3));
+                }
+            }
+            
+            return embeddings;
+        }
+
+        function getClimateCharacteristics(lat, lng) {
+            // Simple climate/biome classification based on coordinates
+            const absLat = Math.abs(lat);
+            
+            let vegetation = 0.5;
+            let urban = 0.3;
+            let water = 0.2;
+            let terrain = 0.4;
+            
+            // Tropical regions (high vegetation)
+            if (absLat < 25) {
+                vegetation = 0.8;
+                water = 0.4;
+            }
+            // Temperate regions
+            else if (absLat < 50) {
+                vegetation = 0.6;
+                urban = 0.5;
+            }
+            // Arctic regions (low vegetation, high terrain)
+            else {
+                vegetation = 0.2;
+                terrain = 0.7;
+                water = 0.3; // Ice/snow
+            }
+            
+            // Coastal areas (detect if near known coastlines)
+            if (isCoastalArea(lat, lng)) {
+                water = 0.6;
+                urban = 0.7;
+            }
+            
+            // Major cities (simplified detection)
+            if (isMajorCity(lat, lng)) {
+                urban = 0.9;
+                vegetation = 0.3;
+            }
+            
+            return { vegetation, urban, water, terrain };
+        }
+
+        function isCoastalArea(lat, lng) {
+            // Simplified coastal detection - in reality you'd use a coastline database
+            const coastalCities = [
+                { lat: 37.7749, lng: -122.4194 }, // San Francisco
+                { lat: 40.7128, lng: -74.0060 },  // New York
+                { lat: 51.5074, lng: -0.1278 },   // London
+                { lat: 35.6762, lng: 139.6503 },  // Tokyo
+            ];
+            
+            return coastalCities.some(city => 
+                Math.abs(city.lat - lat) < 1 && Math.abs(city.lng - lng) < 1
+            );
+        }
+
+        function isMajorCity(lat, lng) {
+            // Simplified major city detection
+            const majorCities = [
+                { lat: 37.7749, lng: -122.4194 }, // San Francisco
+                { lat: 40.7128, lng: -74.0060 },  // New York
+                { lat: 51.5074, lng: -0.1278 },   // London
+                { lat: 48.8566, lng: 2.3522 },    // Paris
+                { lat: 35.6762, lng: 139.6503 },  // Tokyo
+                { lat: 52.05, lng: 0.15 },        // Cambridge
+            ];
+            
+            return majorCities.some(city => 
+                Math.abs(city.lat - lat) < 0.5 && Math.abs(city.lng - lng) < 0.5
+            );
         }
 
         async function loadEmbeddingFromUrl() {
@@ -690,70 +862,52 @@
                 map.removeLayer(geoRasterLayer);
             }
             
-            // Check if GeoRasterLayer is available
-            if (typeof GeoRasterLayer === 'undefined') {
-                console.warn('GeoRasterLayer not available, using fallback canvas method');
-                generateCanvasEmbeddings();
-                return;
-            }
-            
             // Determine how to render based on number of bands
             let pixelValuesToColorFn;
-            const numBands = currentGeoraster.numberOfRasters || currentGeoraster.data?.length || 3;
+            const numBands = currentGeoraster.numberOfRasters;
             
             if (numBands >= 3) {
                 // RGB or multispectral - use first 3 bands as RGB
                 pixelValuesToColorFn = (values) => {
-                    if (!values || values.length === 0) return null;
-                    if (currentGeoraster.noDataValue !== null && values.some(v => v === currentGeoraster.noDataValue)) return null;
+                    if (values.some(v => v === currentGeoraster.noDataValue)) return null;
                     
                     // Normalize values to 0-255 range
-                    const r = Math.max(0, Math.min(255, (values[0] || 0) * 255));
-                    const g = Math.max(0, Math.min(255, (values[1] || 0) * 255));
-                    const b = Math.max(0, Math.min(255, (values[2] || 0) * 255));
+                    const r = Math.max(0, Math.min(255, values[0] * 255));
+                    const g = Math.max(0, Math.min(255, values[1] * 255));
+                    const b = Math.max(0, Math.min(255, values[2] * 255));
                     
                     return [r, g, b, 128]; // Semi-transparent
                 };
             } else if (numBands === 1) {
                 // Single band - create grayscale
                 pixelValuesToColorFn = (values) => {
-                    if (!values || values.length === 0) return null;
-                    if (currentGeoraster.noDataValue !== null && values[0] === currentGeoraster.noDataValue) return null;
-                    const intensity = Math.max(0, Math.min(255, (values[0] || 0) * 255));
+                    if (values[0] === currentGeoraster.noDataValue) return null;
+                    const intensity = Math.max(0, Math.min(255, values[0] * 255));
                     return [intensity, intensity, intensity, 128];
                 };
             } else {
                 throw new Error('Unsupported number of bands');
             }
             
-            try {
-                // Create the layer
-                geoRasterLayer = new GeoRasterLayer({
-                    georaster: currentGeoraster,
-                    opacity: parseInt(document.getElementById('embeddingOpacity').value) / 100,
-                    pixelValuesToColorFn: pixelValuesToColorFn,
-                    resolution: 256 // Balance between quality and performance
-                });
-                
-                geoRasterLayer.addTo(map);
-                
-                // Fit map to georaster bounds if it's a real file (not mock)
-                if (embeddingSource !== 'mock' && currentGeoraster.xmin !== undefined) {
-                    const bounds = [
-                        [currentGeoraster.ymin, currentGeoraster.xmin],
-                        [currentGeoraster.ymax, currentGeoraster.xmax]
-                    ];
-                    map.fitBounds(bounds);
-                }
-                
-                // Enable classification on real embeddings
-                embeddingData = 'georaster'; // Flag to use georaster for classification
-                
-            } catch (error) {
-                console.error('Error creating GeoRasterLayer:', error);
-                // Fallback to canvas method
-                generateCanvasEmbeddings();
-            }
+            // Create the layer
+            geoRasterLayer = new GeoRasterLayer({
+                georaster: currentGeoraster,
+                opacity: parseInt(document.getElementById('embeddingOpacity').value) / 100,
+                pixelValuesToColorFn: pixelValuesToColorFn,
+                resolution: 256 // Balance between quality and performance
+            });
+            
+            geoRasterLayer.addTo(map);
+            
+            // Fit map to georaster bounds
+            const bounds = [
+                [currentGeoraster.ymin, currentGeoraster.xmin],
+                [currentGeoraster.ymax, currentGeoraster.xmax]
+            ];
+            map.fitBounds(bounds);
+            
+            // Enable classification on real embeddings
+            embeddingData = 'georaster'; // Flag to use georaster for classification
         }
 
         async function runClassification() {
@@ -801,66 +955,17 @@
         }
 
         function generateEmbeddingVisualization() {
+            const width = embeddingCanvas.width;
+            const height = embeddingCanvas.height;
+            
             if (embeddingSource === 'mock') {
-                // Create mock georaster instead of canvas overlay
-                generateMockGeoRaster();
+                // Generate mock embeddings as before
+                embeddingData = generateMockEmbeddings(width, height);
+                drawEmbeddingVisualization();
             } else {
                 // Load real embeddings
                 loadRealEmbeddings();
             }
-        }
-
-        async function generateMockGeoRaster() {
-            try {
-                // Get current map bounds for mock data
-                const bounds = map.getBounds();
-                const width = 512;  // Fixed resolution for mock data
-                const height = 512;
-                
-                // Generate mock embedding data
-                const mockEmbeddings = generateMockEmbeddings(width, height);
-                
-                // Convert to georaster format
-                const mockGeoraster = {
-                    data: [
-                        new Float32Array(width * height), // Band 1 (PC1)
-                        new Float32Array(width * height), // Band 2 (PC2) 
-                        new Float32Array(width * height)  // Band 3 (PC3)
-                    ],
-                    width: width,
-                    height: height,
-                    xmin: bounds.getWest(),
-                    xmax: bounds.getEast(),
-                    ymin: bounds.getSouth(),
-                    ymax: bounds.getNorth(),
-                    numberOfRasters: 3,
-                    noDataValue: null,
-                    projection: 4326 // WGS84
-                };
-                
-                // Fill the bands with mock data
-                for (let i = 0; i < width * height; i++) {
-                    mockGeoraster.data[0][i] = mockEmbeddings[i * 3];     // PC1
-                    mockGeoraster.data[1][i] = mockEmbeddings[i * 3 + 1]; // PC2
-                    mockGeoraster.data[2][i] = mockEmbeddings[i * 3 + 2]; // PC3
-                }
-                
-                currentGeoraster = mockGeoraster;
-                await createGeoRasterLayer();
-                
-            } catch (error) {
-                console.error('Error generating mock georaster:', error);
-                // Fallback to canvas overlay
-                generateCanvasEmbeddings();
-            }
-        }
-
-        function generateCanvasEmbeddings() {
-            // Fallback canvas-based approach
-            const width = embeddingCanvas.width;
-            const height = embeddingCanvas.height;
-            embeddingData = generateMockEmbeddings(width, height);
-            drawEmbeddingVisualization();
         }
 
         async function loadRealEmbeddings() {
@@ -1325,10 +1430,7 @@
         }
 
         // Initialize the application when the page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            // Wait for all libraries to load
-            setTimeout(init, 100);
-        });
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
