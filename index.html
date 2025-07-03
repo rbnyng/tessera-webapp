@@ -3,1434 +3,952 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Satellite Image Classification Tool</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <title>GeoTessera Interactive Classifier</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        * {
+        body {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #1a1a1a;
-            color: #ffffff;
-            height: 100vh;
-            overflow: hidden;
+            color: #fff;
         }
-
+        
         .container {
             display: flex;
             height: 100vh;
         }
-
-        .sidebar {
-            width: 320px;
-            background: #2d2d2d;
-            padding: 20px;
-            overflow-y: auto;
-            border-right: 2px solid #444;
-        }
-
-        .map-container {
+        
+        #map {
             flex: 1;
             position: relative;
         }
-
-        #map {
-            width: 100%;
-            height: 100%;
+        
+        .controls {
+            width: 320px;
+            background: #2a2a2a;
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 1px solid #444;
         }
-
-        h1 {
-            font-size: 20px;
+        
+        .control-group {
             margin-bottom: 20px;
-            color: #4CAF50;
-            text-align: center;
-        }
-
-        .section {
-            margin-bottom: 25px;
             padding: 15px;
-            background: #3a3a3a;
+            background: #333;
             border-radius: 8px;
-            border-left: 4px solid #4CAF50;
         }
-
-        .section h3 {
-            margin-bottom: 12px;
-            color: #ffffff;
-            font-size: 16px;
+        
+        .control-group h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-
+        
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #444;
+            color: #fff;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background: #4CAF50;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
         .class-item {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 8px 12px;
-            margin: 8px 0;
-            background: #4a4a4a;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.2s;
+            margin: 5px 0;
+            padding: 8px;
+            background: #444;
+            border-radius: 4px;
         }
-
-        .class-item:hover {
-            background: #555;
-        }
-
-        .class-item.active {
-            background: #4CAF50;
-        }
-
+        
         .class-color {
             width: 20px;
             height: 20px;
             border-radius: 50%;
             margin-right: 10px;
-            border: 2px solid #666;
+            border: 2px solid #fff;
+            flex-shrink: 0;
         }
-
+        
         .class-info {
             flex: 1;
-            display: flex;
-            flex-direction: column;
+            min-width: 0;
         }
-
+        
         .class-name {
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        .class-count {
             font-size: 12px;
-            color: #ccc;
+            font-weight: bold;
         }
-
-        button {
+        
+        .class-count {
+            font-size: 10px;
+            color: #aaa;
+        }
+        
+        .class-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .class-actions button {
+            width: auto;
+            padding: 4px 8px;
+            font-size: 10px;
+            margin: 0;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .status.loading {
             background: #4CAF50;
             color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.2s;
-            width: 100%;
-            margin: 5px 0;
         }
-
-        button:hover {
-            background: #45a049;
-        }
-
-        button:disabled {
-            background: #666;
-            cursor: not-allowed;
-        }
-
-        .danger {
+        
+        .status.error {
             background: #f44336;
-        }
-
-        .danger:hover {
-            background: #da190b;
-        }
-
-        input[type="text"] {
-            width: 100%;
-            padding: 8px 12px;
-            margin: 8px 0;
-            background: #4a4a4a;
-            border: 1px solid #666;
-            border-radius: 4px;
             color: white;
-            font-size: 14px;
         }
-
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #4CAF50;
+        
+        .status.success {
+            background: #2196F3;
+            color: white;
         }
-
-        .slider-container {
+        
+        .visualization-controls {
+            display: flex;
+            gap: 10px;
             margin: 10px 0;
         }
-
-        .slider-container label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 14px;
+        
+        .visualization-controls select {
+            width: auto;
+            flex: 1;
         }
-
-        input[type="range"] {
-            width: 100%;
-            margin: 5px 0;
-        }
-
-        .stats {
-            font-size: 12px;
+        
+        .embedding-info {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 11px;
             color: #ccc;
-            margin-top: 10px;
         }
-
-        .mode-toggle {
+        
+        .mode-selector {
             display: flex;
+            gap: 5px;
             margin-bottom: 15px;
         }
-
-        .mode-toggle button {
+        
+        .mode-button {
             flex: 1;
-            margin: 0 2px;
-            padding: 8px;
+            padding: 8px 12px;
+            border: 1px solid #555;
+            background: #444;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
             font-size: 12px;
+            transition: all 0.3s;
         }
-
-        .overlay-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            pointer-events: none;
-            z-index: 1000;
+        
+        .mode-button.active {
+            background: #4CAF50;
+            border-color: #4CAF50;
         }
-
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8);
-            padding: 20px;
-            border-radius: 8px;
-            z-index: 2000;
-            display: none;
+        
+        .advanced-controls {
+            margin-top: 10px;
+        }
+        
+        .slider-group {
+            margin: 10px 0;
+        }
+        
+        .slider-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        .slider-group input[type="range"] {
+            width: 100%;
+        }
+        
+        .slider-value {
+            font-size: 11px;
+            color: #aaa;
+            text-align: right;
+        }
+        
+        .api-config {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .api-config input {
+            font-size: 11px;
+        }
+        
+        .classification-method {
+            display: flex;
+            gap: 5px;
+            margin: 10px 0;
+        }
+        
+        .classification-method select {
+            flex: 1;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #444;
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s;
+        }
+        
+        .leaflet-control-layers {
+            background: #333 !important;
+            color: #fff !important;
+        }
+        
+        .leaflet-control-layers-list {
+            color: #fff !important;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="sidebar">
-            <h1>🛰️ Satellite Classifier</h1>
-            
-            <div class="section">
-                <h3>Mode</h3>
-                <div class="mode-toggle">
-                    <button id="pinMode" class="active">📍 Pin Mode</button>
-                    <button id="classifyMode">🎨 Classify</button>
+        <div id="map"></div>
+        <div class="controls">
+            <div class="control-group">
+                <h3>🔧 API Configuration</h3>
+                <div class="api-config">
+                    <input type="text" id="apiBase" placeholder="API Base URL (e.g., https://your-app.vercel.app)" value="">
+                    <small style="color: #aaa; font-size: 10px;">Leave empty for local development (localhost:3000)</small>
                 </div>
             </div>
-
-            <div class="section">
-                <h3>Embedding Layer</h3>
-                <button id="toggleEmbedding" onclick="toggleEmbeddingLayer()">🔬 Show Embeddings</button>
-                <div class="slider-container">
-                    <label>Embedding Opacity: <span id="embeddingOpacityValue">50</span>%</label>
-                    <input type="range" id="embeddingOpacity" min="0" max="100" value="50" />
-                </div>
-                <div class="slider-container">
-                    <label>Embedding Source:</label>
-                    <select id="embeddingSource" onchange="changeEmbeddingSource()">
-                        <option value="mock">Mock Data (Demo)</option>
-                        <option value="geotessera">GeoTessera (Live)</option>
-                        <option value="file">Upload GeoTIFF</option>
-                        <option value="url">GeoTIFF URL</option>
-                        <option value="custom">Custom Tile Server</option>
+            
+            <div class="control-group">
+                <h3>📍 Location</h3>
+                <input type="number" id="latInput" placeholder="Latitude" step="0.01" value="52.05">
+                <input type="number" id="lonInput" placeholder="Longitude" step="0.01" value="0.15">
+                <input type="number" id="yearInput" placeholder="Year" value="2024">
+                <button id="loadLocation">Load GeoTessera Embeddings</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎨 Visualization</h3>
+                <div class="visualization-controls">
+                    <select id="bandR">
+                        <option value="0">Band 0</option>
+                    </select>
+                    <select id="bandG">
+                        <option value="1">Band 1</option>
+                    </select>
+                    <select id="bandB">
+                        <option value="2">Band 2</option>
                     </select>
                 </div>
-                <div id="geotesseraControls" style="display: none;">
-                    <div class="slider-container">
-                        <label>Year:</label>
-                        <select id="geotesseraYear">
-                            <option value="2024">2024</option>
-                            <option value="2023">2023</option>
-                            <option value="2022">2022</option>
-                        </select>
-                    </div>
-                    <div class="slider-container">
-                        <label>Embedding Dimensions:</label>
-                        <select id="geotesseraVersion">
-                            <option value="v1">v1 (128-dim)</option>
-                            <option value="v2">v2 (256-dim)</option>
-                        </select>
-                    </div>
-                    <button id="loadGeotesseraButton" onclick="loadGeotesseraEmbedding()">🌍 Load Current View</button>
+                <button id="updateVisualization">Update Visualization</button>
+                <label>
+                    <input type="checkbox" id="normalizeVis" checked> Normalize bands
+                </label>
+            </div>
+            
+            <div class="control-group">
+                <h3>🔍 Classification</h3>
+                <div class="mode-selector">
+                    <button class="mode-button active" data-mode="train">Train</button>
+                    <button class="mode-button" data-mode="classify">Classify</button>
                 </div>
-                <input type="file" id="embeddingFile" accept=".tif,.tiff,.geotiff" style="display: none;" onchange="loadEmbeddingFile()" />
-                <input type="text" id="embeddingUrl" placeholder="https://example.com/embeddings.tif" style="display: none;" />
-                <input type="text" id="customEmbeddingUrl" placeholder="https://your-server.com/embeddings/{z}/{x}/{y}" style="display: none;" />
-                <button id="loadEmbeddingButton" onclick="loadSelectedEmbedding()" style="display: none;">Load Embeddings</button>
-                <div style="font-size: 12px; color: #ccc; margin-top: 8px;">
-                    False-color PCA visualization of embeddings
+                
+                <div class="classification-method">
+                    <select id="classificationMethod">
+                        <option value="knn">K-Nearest Neighbors</option>
+                        <option value="kmeans">K-Means Clustering</option>
+                    </select>
+                </div>
+                
+                <div class="advanced-controls">
+                    <div class="slider-group">
+                        <label>Distance Threshold (KNN)</label>
+                        <input type="range" id="threshold" min="0.1" max="2.0" step="0.1" value="0.5">
+                        <div class="slider-value" id="thresholdValue">0.5</div>
+                    </div>
+                    <div class="slider-group">
+                        <label>Number of Clusters (K-Means)</label>
+                        <input type="range" id="nClusters" min="2" max="10" step="1" value="5">
+                        <div class="slider-value" id="nClustersValue">5</div>
+                    </div>
                 </div>
             </div>
-
-            <div class="section">
-                <h3>Classes</h3>
+            
+            <div class="control-group">
+                <h3>📊 Classes</h3>
+                <input type="text" id="newClassName" placeholder="New class name">
+                <button id="addClass">Add Class</button>
                 <div id="classList"></div>
-                <input type="text" id="newClassName" placeholder="Enter class name..." />
-                <button onclick="addClass()">Add New Class</button>
+                <button id="clearClasses">Clear Classes</button>
             </div>
-
-            <div class="section">
-                <h3>Classification Settings</h3>
-                <div class="slider-container">
-                    <label>Color Sensitivity: <span id="sensitivityValue">30</span></label>
-                    <input type="range" id="sensitivity" min="5" max="100" value="30" />
-                </div>
-                <div class="slider-container">
-                    <label>Opacity: <span id="opacityValue">70</span>%</label>
-                    <input type="range" id="opacity" min="10" max="100" value="70" />
-                </div>
-                <button onclick="runClassification()">🚀 Run Classification</button>
-                <button onclick="clearClassification()" class="danger">Clear Results</button>
-            </div>
-
-            <div class="section">
-                <h3>Actions</h3>
-                <button onclick="clearAllPins()" class="danger">Clear All Pins</button>
-                <button onclick="exportData()">💾 Export Data</button>
-                <div class="stats" id="stats">
-                    Pins: 0 | Classes: 0 | Classified: 0%
+            
+            <div class="control-group">
+                <h3>⚡ Actions</h3>
+                <button id="classifyAll">Classify All Pixels</button>
+                <button id="exportResults">Export Results</button>
+                <div class="progress-bar" id="progressBar" style="display: none;">
+                    <div class="progress-fill" id="progressFill"></div>
                 </div>
             </div>
-        </div>
-
-        <div class="map-container">
-            <div id="map"></div>
-            <canvas id="embeddingCanvas" class="overlay-canvas" style="z-index: 999;"></canvas>
-            <canvas id="overlayCanvas" class="overlay-canvas"></canvas>
-            <div class="loading" id="loading">Processing classification...</div>
+            
+            <div id="status" class="status" style="display: none;"></div>
+            
+            <div class="embedding-info">
+                <strong>GeoTessera Embeddings</strong><br>
+                <span id="embeddingDetails">Load a location to see embedding details</span>
+            </div>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <script src="https://unpkg.com/georaster@1.6.0/dist/georaster.browser.bundle.min.js"></script>
-    <script src="https://unpkg.com/georaster-layer-for-leaflet@3.10.0/dist/georaster-layer-for-leaflet.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Global variables
-        let map;
-        let currentMode = 'pin';
-        let activeClass = null;
-        let classes = {};
-        let pins = [];
-        let classificationResults = null;
-        let overlayCanvas;
-        let overlayCtx;
-        let imageData = null;
-        let embeddingCanvas;
-        let embeddingCtx;
-        let embeddingData = null;
-        let showEmbeddings = false;
-        let embeddingSource = 'mock';
-        let embeddingCache = new Map();
-        let geoRasterLayer = null;
-        let currentGeoraster = null;
-
-        // Default colors for classes
-        const defaultColors = [
-            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57',
-            '#FF9FF3', '#54A0FF', '#5F27CD', '#00D2D3', '#FF9F43'
-        ];
-
-        // Initialize the application
-        function init() {
-            initMap();
-            initCanvas();
-            setupEventListeners();
-            updateStats();
-        }
-
-        function initMap() {
-            map = L.map('map').setView([37.7749, -122.4194], 13);
-            
-            // Primary satellite imagery layer (Google Satellite)
-            const googleSat = L.tileLayer('http://mt0.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}', {
-                attribution: '&copy; Google',
-                maxZoom: 20
-            });
-            
-            // Fallback satellite imagery layers
-            const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles &copy; Esri',
-                maxZoom: 18
-            });
-            
-            const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors',
-                maxZoom: 19
-            });
-            
-            // Try to add Google Satellite first, fallback to others if it fails
-            googleSat.addTo(map);
-            
-            // Add layer control
-            const baseMaps = {
-                "Google Satellite": googleSat,
-                "Esri Satellite": esriSat,
-                "OpenStreetMap": openStreetMap
-            };
-            
-            L.control.layers(baseMaps).addTo(map);
-
-            // Map click handler
-            map.on('click', handleMapClick);
-            map.on('moveend', updateCanvas);
-            map.on('zoomend', updateCanvas);
-        }
-
-        function initCanvas() {
-            overlayCanvas = document.getElementById('overlayCanvas');
-            overlayCtx = overlayCanvas.getContext('2d');
-            
-            embeddingCanvas = document.getElementById('embeddingCanvas');
-            embeddingCtx = embeddingCanvas.getContext('2d');
-            
-            updateCanvas();
-        }
-
-        function updateCanvas() {
-            const mapContainer = map.getContainer();
-            overlayCanvas.width = mapContainer.offsetWidth;
-            overlayCanvas.height = mapContainer.offsetHeight;
-            
-            embeddingCanvas.width = mapContainer.offsetWidth;
-            embeddingCanvas.height = mapContainer.offsetHeight;
-            
-            // Regenerate embedding visualization when canvas size changes
-            if (showEmbeddings) {
-                generateEmbeddingVisualization();
-            }
-        }
-
-        function setupEventListeners() {
-            document.getElementById('pinMode').addEventListener('click', () => setMode('pin'));
-            document.getElementById('classifyMode').addEventListener('click', () => setMode('classify'));
-            document.getElementById('sensitivity').addEventListener('input', updateSensitivity);
-            document.getElementById('opacity').addEventListener('input', updateOpacity);
-            document.getElementById('embeddingOpacity').addEventListener('input', updateEmbeddingOpacity);
-            document.getElementById('newClassName').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') addClass();
-            });
-        }
-
-        function setMode(mode) {
-            currentMode = mode;
-            document.getElementById('pinMode').classList.toggle('active', mode === 'pin');
-            document.getElementById('classifyMode').classList.toggle('active', mode === 'classify');
-            
-            if (mode === 'pin') {
-                map.getContainer().style.cursor = 'crosshair';
-            } else {
-                map.getContainer().style.cursor = 'default';
-            }
-        }
-
-        function handleMapClick(e) {
-            if (currentMode === 'pin' && activeClass) {
-                addPin(e.latlng, activeClass);
-            }
-        }
-
-        function addPin(latlng, className) {
-            const color = classes[className].color;
-            const marker = L.circleMarker(latlng, {
-                color: '#ffffff',
-                fillColor: color,
-                fillOpacity: 0.8,
-                radius: 8,
-                weight: 2
-            }).addTo(map);
-
-            const pin = {
-                id: Date.now(),
-                latlng: latlng,
-                className: className,
-                marker: marker
-            };
-
-            pins.push(pin);
-            classes[className].count++;
-            
-            // Add click handler to remove pin
-            marker.on('click', function(e) {
-                e.originalEvent.stopPropagation();
-                removePin(pin.id);
-            });
-
-            updateClassDisplay();
-            updateStats();
-        }
-
-        function removePin(pinId) {
-            const pinIndex = pins.findIndex(p => p.id === pinId);
-            if (pinIndex > -1) {
-                const pin = pins[pinIndex];
-                map.removeLayer(pin.marker);
-                classes[pin.className].count--;
-                pins.splice(pinIndex, 1);
-                updateClassDisplay();
-                updateStats();
-            }
-        }
-
-        function addClass() {
-            const nameInput = document.getElementById('newClassName');
-            const name = nameInput.value.trim();
-            
-            if (name && !classes[name]) {
-                const colorIndex = Object.keys(classes).length % defaultColors.length;
-                classes[name] = {
-                    color: defaultColors[colorIndex],
-                    count: 0
-                };
-                nameInput.value = '';
-                updateClassDisplay();
-                updateStats();
-            }
-        }
-
-        function updateClassDisplay() {
-            const classList = document.getElementById('classList');
-            classList.innerHTML = '';
-
-            Object.keys(classes).forEach(className => {
-                const classData = classes[className];
-                const div = document.createElement('div');
-                div.className = 'class-item' + (activeClass === className ? ' active' : '');
-                div.onclick = () => setActiveClass(className);
-
-                div.innerHTML = `
-                    <div class="class-color" style="background-color: ${classData.color}"></div>
-                    <div class="class-info">
-                        <div class="class-name">${className}</div>
-                        <div class="class-count">${classData.count} pins</div>
-                    </div>
-                    <button onclick="removeClass('${className}')" style="width: auto; margin: 0; padding: 5px 8px; font-size: 12px;" class="danger">×</button>
-                `;
-
-                classList.appendChild(div);
-            });
-        }
-
-        function setActiveClass(className) {
-            activeClass = className;
-            updateClassDisplay();
-        }
-
-        function removeClass(className) {
-            event.stopPropagation();
-            
-            // Remove all pins of this class
-            pins = pins.filter(pin => {
-                if (pin.className === className) {
-                    map.removeLayer(pin.marker);
-                    return false;
-                }
-                return true;
-            });
-
-            delete classes[className];
-            
-            if (activeClass === className) {
-                activeClass = null;
+        class GeoTesseraClassifier {
+            constructor() {
+                this.updateClassDisplay();
+                this.showStatus('All classes cleared', 'success');
             }
             
-            updateClassDisplay();
-            updateStats();
-        }
-
-        function updateSensitivity() {
-            const value = document.getElementById('sensitivity').value;
-            document.getElementById('sensitivityValue').textContent = value;
-        }
-
-        function updateOpacity() {
-            const value = document.getElementById('opacity').value;
-            document.getElementById('opacityValue').textContent = value;
-            
-            if (classificationResults) {
-                drawClassification();
-            }
-        }
-
-        function updateEmbeddingOpacity() {
-            const value = document.getElementById('embeddingOpacity').value;
-            document.getElementById('embeddingOpacityValue').textContent = value;
-            
-            if (embeddingData && showEmbeddings) {
-                drawEmbeddingVisualization();
-            }
-        }
-
-        function toggleEmbeddingLayer() {
-            showEmbeddings = !showEmbeddings;
-            const button = document.getElementById('toggleEmbedding');
-            
-            if (showEmbeddings) {
-                button.textContent = '🔬 Hide Embeddings';
-                button.style.background = '#FF6B6B';
-                
-                if (embeddingSource === 'mock') {
-                    generateEmbeddingVisualization();
-                } else if (geoRasterLayer) {
-                    // Show existing georaster layer
-                    geoRasterLayer.addTo(map);
-                }
-            } else {
-                button.textContent = '🔬 Show Embeddings';
-                button.style.background = '#4CAF50';
-                
-                if (embeddingSource === 'mock') {
-                    embeddingCtx.clearRect(0, 0, embeddingCanvas.width, embeddingCanvas.height);
-                } else if (geoRasterLayer) {
-                    map.removeLayer(geoRasterLayer);
-                }
-            }
-        }
-
-        function updateEmbeddingOpacity() {
-            const value = document.getElementById('embeddingOpacity').value;
-            document.getElementById('embeddingOpacityValue').textContent = value;
-            
-            if (embeddingSource === 'mock' && embeddingData && showEmbeddings) {
-                drawEmbeddingVisualization();
-            } else if (geoRasterLayer) {
-                geoRasterLayer.setOpacity(value / 100);
-            }
-        }
-
-        function changeEmbeddingSource() {
-            embeddingSource = document.getElementById('embeddingSource').value;
-            const fileInput = document.getElementById('embeddingFile');
-            const urlInput = document.getElementById('embeddingUrl');
-            const customUrlInput = document.getElementById('customEmbeddingUrl');
-            const loadButton = document.getElementById('loadEmbeddingButton');
-            const geotesseraControls = document.getElementById('geotesseraControls');
-            
-            // Hide all inputs first
-            fileInput.style.display = 'none';
-            urlInput.style.display = 'none';
-            customUrlInput.style.display = 'none';
-            loadButton.style.display = 'none';
-            geotesseraControls.style.display = 'none';
-            
-            // Show relevant input based on selection
-            if (embeddingSource === 'geotessera') {
-                geotesseraControls.style.display = 'block';
-            } else if (embeddingSource === 'file') {
-                fileInput.style.display = 'block';
-            } else if (embeddingSource === 'url') {
-                urlInput.style.display = 'block';
-                loadButton.style.display = 'block';
-            } else if (embeddingSource === 'custom') {
-                customUrlInput.style.display = 'block';
-                loadButton.style.display = 'block';
-            }
-            
-            // Clear previous embedding layer
-            if (geoRasterLayer) {
-                map.removeLayer(geoRasterLayer);
-                geoRasterLayer = null;
-            }
-            
-            // Clear cache
-            embeddingCache.clear();
-            
-            if (showEmbeddings && embeddingSource === 'mock') {
-                generateEmbeddingVisualization();
-            }
-        }
-
-        async function loadEmbeddingFile() {
-            const fileInput = document.getElementById('embeddingFile');
-            const file = fileInput.files[0];
-            
-            if (!file) return;
-            
-            try {
-                document.getElementById('loading').style.display = 'block';
-                
-                // Read file as array buffer
-                const arrayBuffer = await file.arrayBuffer();
-                
-                // Parse with georaster
-                currentGeoraster = await parseGeoraster(arrayBuffer);
-                
-                // Create and add layer
-                await createGeoRasterLayer();
-                
-                alert('Embedding file loaded successfully!');
-                
-            } catch (error) {
-                console.error('Error loading embedding file:', error);
-                alert('Failed to load embedding file. Please check the format.');
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
-        }
-
-        async function loadGeotesseraEmbedding() {
-            const center = map.getCenter();
-            const year = document.getElementById('geotesseraYear').value;
-            const version = document.getElementById('geotesseraVersion').value;
-            
-            try {
-                document.getElementById('loading').style.display = 'block';
-                
-                // For demo purposes, we'll simulate GeoTessera API call
-                // In a real implementation, you'd need a backend service to call GeoTessera
-                // since it's a Python library and can't run directly in the browser
-                
-                await simulateGeotesseraAPI(center.lat, center.lng, year, version);
-                
-                alert(`Loaded ${version} embeddings for ${year} at ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}!`);
-                
-            } catch (error) {
-                console.error('Error loading GeoTessera embeddings:', error);
-                alert('GeoTessera integration requires a backend service. Using mock data instead.');
-                
-                // Fall back to mock data
-                embeddingSource = 'mock';
-                generateEmbeddingVisualization();
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
-        }
-
-        async function simulateGeotesseraAPI(lat, lng, year, version) {
-            // Simulate API call delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Generate enhanced mock data that represents what GeoTessera would return
-            const width = embeddingCanvas.width;
-            const height = embeddingCanvas.height;
-            const dims = version === 'v1' ? 128 : 256;
-            
-            // Create more realistic embeddings based on location
-            embeddingData = generateLocationSpecificEmbeddings(width, height, lat, lng, dims);
-            
-            if (showEmbeddings) {
-                drawEmbeddingVisualization();
-            }
-        }
-
-        function generateLocationSpecificEmbeddings(width, height, lat, lng, dimensions) {
-            // Create embeddings that vary based on actual geographic location
-            const embeddings = new Float32Array(width * height * 3);
-            
-            // Determine biome/region characteristics based on coordinates
-            const climate = getClimateCharacteristics(lat, lng);
-            
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const i = (y * width + x) * 3;
-                    
-                    // Normalize coordinates
-                    const nx = x / width;
-                    const ny = y / height;
-                    
-                    // PC1: Vegetation patterns influenced by actual climate
-                    let pc1 = climate.vegetation * (0.5 + 0.3 * Math.sin(nx * Math.PI * 4));
-                    pc1 += Math.random() * 0.15 - 0.075;
-                    
-                    // PC2: Urban/water patterns based on location
-                    let pc2 = climate.urban * (0.3 + 0.4 * Math.cos(ny * Math.PI * 6));
-                    pc2 += climate.water * Math.sin(nx * Math.PI * 2) * 0.3;
-                    pc2 += Math.random() * 0.2 - 0.1;
-                    
-                    // PC3: Terrain/elevation patterns
-                    let pc3 = climate.terrain * (ny * 0.6 + Math.sin(nx * Math.PI * 8) * 0.4);
-                    pc3 += Math.random() * 0.25 - 0.125;
-                    
-                    // Normalize and clamp
-                    embeddings[i] = Math.max(0, Math.min(1, pc1));
-                    embeddings[i + 1] = Math.max(0, Math.min(1, pc2));
-                    embeddings[i + 2] = Math.max(0, Math.min(1, pc3));
-                }
-            }
-            
-            return embeddings;
-        }
-
-        function getClimateCharacteristics(lat, lng) {
-            // Simple climate/biome classification based on coordinates
-            const absLat = Math.abs(lat);
-            
-            let vegetation = 0.5;
-            let urban = 0.3;
-            let water = 0.2;
-            let terrain = 0.4;
-            
-            // Tropical regions (high vegetation)
-            if (absLat < 25) {
-                vegetation = 0.8;
-                water = 0.4;
-            }
-            // Temperate regions
-            else if (absLat < 50) {
-                vegetation = 0.6;
-                urban = 0.5;
-            }
-            // Arctic regions (low vegetation, high terrain)
-            else {
-                vegetation = 0.2;
-                terrain = 0.7;
-                water = 0.3; // Ice/snow
-            }
-            
-            // Coastal areas (detect if near known coastlines)
-            if (isCoastalArea(lat, lng)) {
-                water = 0.6;
-                urban = 0.7;
-            }
-            
-            // Major cities (simplified detection)
-            if (isMajorCity(lat, lng)) {
-                urban = 0.9;
-                vegetation = 0.3;
-            }
-            
-            return { vegetation, urban, water, terrain };
-        }
-
-        function isCoastalArea(lat, lng) {
-            // Simplified coastal detection - in reality you'd use a coastline database
-            const coastalCities = [
-                { lat: 37.7749, lng: -122.4194 }, // San Francisco
-                { lat: 40.7128, lng: -74.0060 },  // New York
-                { lat: 51.5074, lng: -0.1278 },   // London
-                { lat: 35.6762, lng: 139.6503 },  // Tokyo
-            ];
-            
-            return coastalCities.some(city => 
-                Math.abs(city.lat - lat) < 1 && Math.abs(city.lng - lng) < 1
-            );
-        }
-
-        function isMajorCity(lat, lng) {
-            // Simplified major city detection
-            const majorCities = [
-                { lat: 37.7749, lng: -122.4194 }, // San Francisco
-                { lat: 40.7128, lng: -74.0060 },  // New York
-                { lat: 51.5074, lng: -0.1278 },   // London
-                { lat: 48.8566, lng: 2.3522 },    // Paris
-                { lat: 35.6762, lng: 139.6503 },  // Tokyo
-                { lat: 52.05, lng: 0.15 },        // Cambridge
-            ];
-            
-            return majorCities.some(city => 
-                Math.abs(city.lat - lat) < 0.5 && Math.abs(city.lng - lng) < 0.5
-            );
-        }
-
-        async function loadEmbeddingFromUrl() {
-            const url = document.getElementById('embeddingUrl').value.trim();
-            
-            if (!url) {
-                alert('Please enter a valid URL');
-                return;
-            }
-            
-            try {
-                document.getElementById('loading').style.display = 'block';
-                
-                // Fetch the GeoTIFF
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            exportResults() {
+                if (!this.classificationResults) {
+                    this.showStatus('No classification results to export', 'error');
+                    return;
                 }
                 
-                const arrayBuffer = await response.arrayBuffer();
-                currentGeoraster = await parseGeoraster(arrayBuffer);
-                
-                await createGeoRasterLayer();
-                
-                alert('Embedding loaded successfully from URL!');
-                
-            } catch (error) {
-                console.error('Error loading embedding from URL:', error);
-                alert('Failed to load embedding from URL. Please check the URL and format.');
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
-        }
-
-        async function createGeoRasterLayer() {
-            // Remove existing layer
-            if (geoRasterLayer) {
-                map.removeLayer(geoRasterLayer);
-            }
-            
-            // Determine how to render based on number of bands
-            let pixelValuesToColorFn;
-            const numBands = currentGeoraster.numberOfRasters;
-            
-            if (numBands >= 3) {
-                // RGB or multispectral - use first 3 bands as RGB
-                pixelValuesToColorFn = (values) => {
-                    if (values.some(v => v === currentGeoraster.noDataValue)) return null;
-                    
-                    // Normalize values to 0-255 range
-                    const r = Math.max(0, Math.min(255, values[0] * 255));
-                    const g = Math.max(0, Math.min(255, values[1] * 255));
-                    const b = Math.max(0, Math.min(255, values[2] * 255));
-                    
-                    return [r, g, b, 128]; // Semi-transparent
-                };
-            } else if (numBands === 1) {
-                // Single band - create grayscale
-                pixelValuesToColorFn = (values) => {
-                    if (values[0] === currentGeoraster.noDataValue) return null;
-                    const intensity = Math.max(0, Math.min(255, values[0] * 255));
-                    return [intensity, intensity, intensity, 128];
-                };
-            } else {
-                throw new Error('Unsupported number of bands');
-            }
-            
-            // Create the layer
-            geoRasterLayer = new GeoRasterLayer({
-                georaster: currentGeoraster,
-                opacity: parseInt(document.getElementById('embeddingOpacity').value) / 100,
-                pixelValuesToColorFn: pixelValuesToColorFn,
-                resolution: 256 // Balance between quality and performance
-            });
-            
-            geoRasterLayer.addTo(map);
-            
-            // Fit map to georaster bounds
-            const bounds = [
-                [currentGeoraster.ymin, currentGeoraster.xmin],
-                [currentGeoraster.ymax, currentGeoraster.xmax]
-            ];
-            map.fitBounds(bounds);
-            
-            // Enable classification on real embeddings
-            embeddingData = 'georaster'; // Flag to use georaster for classification
-        }
-
-        async function runClassification() {
-            if (pins.length === 0) {
-                alert('Please add some training pins first!');
-                return;
-            }
-
-            document.getElementById('loading').style.display = 'block';
-            
-            try {
-                // Get current map bounds and capture imagery data
-                await captureMapImagery();
-                
-                // Perform classification
-                await performClassification();
-                
-                // Draw results
-                drawClassification();
-                
-                updateStats();
-            } catch (error) {
-                console.error('Classification error:', error);
-                alert('Classification failed. Please try again.');
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
-        }
-
-        async function captureMapImagery() {
-            return new Promise((resolve) => {
-                const bounds = map.getBounds();
-                const size = map.getSize();
-                
-                // Create synthetic image data for demonstration
-                imageData = {
-                    width: size.x,
-                    height: size.y,
-                    bounds: bounds,
-                    pixels: generateSyntheticImageData(size.x, size.y)
+                const results = {
+                    location: this.currentLocation,
+                    classes: this.classes,
+                    training_data: this.trainingData,
+                    classification_results: this.classificationResults.classification,
+                    classification_stats: this.classificationResults.class_stats,
+                    embedding_info: this.embeddingData,
+                    export_timestamp: new Date().toISOString()
                 };
                 
-                setTimeout(resolve, 500);
-            });
-        }
-
-        function generateEmbeddingVisualization() {
-            const width = embeddingCanvas.width;
-            const height = embeddingCanvas.height;
+                const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `geotessera_classification_${this.currentLocation.lat}_${this.currentLocation.lon}_${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                this.showStatus('Results exported successfully', 'success');
+            }
             
-            if (embeddingSource === 'mock') {
-                // Generate mock embeddings as before
-                embeddingData = generateMockEmbeddings(width, height);
-                drawEmbeddingVisualization();
+            showStatus(message, type) {
+                const statusDiv = document.getElementById('status');
+                statusDiv.textContent = message;
+                statusDiv.className = `status ${type}`;
+                statusDiv.style.display = 'block';
+                
+                if (type === 'success' || type === 'error') {
+                    setTimeout(() => {
+                        statusDiv.style.display = 'none';
+                    }, 3000);
+                }
+            }
+            
+            showProgress(percent) {
+                const progressBar = document.getElementById('progressBar');
+                const progressFill = document.getElementById('progressFill');
+                progressBar.style.display = 'block';
+                progressFill.style.width = `${percent}%`;
+            }
+            
+            hideProgress() {
+                const progressBar = document.getElementById('progressBar');
+                progressBar.style.display = 'none';
+            }
+        }
+        
+        // Global reference for onclick handlers
+        let classifier;
+        
+        // Initialize the application after Leaflet is loaded
+        function initializeApp() {
+            if (typeof L !== 'undefined') {
+                classifier = new GeoTesseraClassifier();
             } else {
-                // Load real embeddings
-                loadRealEmbeddings();
+                // Wait a bit more for Leaflet to load
+                setTimeout(initializeApp, 100);
             }
         }
-
-        async function loadRealEmbeddings() {
-            try {
-                document.getElementById('loading').style.display = 'block';
-                
-                const bounds = map.getBounds();
-                const zoom = map.getZoom();
-                
-                if (embeddingSource === 'custom') {
-                    await loadTiledEmbeddings(bounds, zoom);
-                } else if (embeddingSource === 'cog') {
-                    await loadCOGEmbeddings(bounds, zoom);
-                }
-                
-                drawEmbeddingVisualization();
-            } catch (error) {
-                console.error('Failed to load embeddings:', error);
-                alert('Failed to load custom embeddings. Using mock data.');
-                embeddingSource = 'mock';
-                generateEmbeddingVisualization();
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
-        }
-
-        async function loadTiledEmbeddings(bounds, zoom) {
-            // Calculate tile boundaries for current view
-            const tiles = getTilesInBounds(bounds, zoom);
-            const width = embeddingCanvas.width;
-            const height = embeddingCanvas.height;
-            
-            embeddingData = new Float32Array(width * height * 3);
-            
-            const customUrl = document.getElementById('customEmbeddingUrl').value;
-            if (!customUrl) {
-                throw new Error('Custom URL not provided');
-            }
-            
-            // Load tiles and composite them
-            for (const tile of tiles) {
-                const tileKey = `${tile.z}_${tile.x}_${tile.y}`;
-                
-                if (!embeddingCache.has(tileKey)) {
-                    const url = customUrl.replace('{z}', tile.z).replace('{x}', tile.x).replace('{y}', tile.y);
-                    const response = await fetch(url);
-                    
-                    if (!response.ok) continue;
-                    
-                    // Assuming binary format: float32 array with 3 channels per pixel
-                    const arrayBuffer = await response.arrayBuffer();
-                    const tileData = new Float32Array(arrayBuffer);
-                    embeddingCache.set(tileKey, tileData);
-                }
-                
-                // Composite tile into main embedding data
-                const tileData = embeddingCache.get(tileKey);
-                compositeTileData(tileData, tile, embeddingData, width, height, bounds, zoom);
-            }
-        }
-
-        async function loadCOGEmbeddings(bounds, zoom) {
-            // This would integrate with a library like geotiff.js
-            // For now, simulate COG loading
-            console.log('COG loading not implemented yet - using mock data');
-            embeddingData = generateMockEmbeddings(embeddingCanvas.width, embeddingCanvas.height);
-        }
-
-        function getTilesInBounds(bounds, zoom) {
-            // Convert bounds to tile coordinates
-            const tiles = [];
-            const tileSize = 256;
-            
-            const minTile = latLngToTile(bounds.getNorthWest(), zoom);
-            const maxTile = latLngToTile(bounds.getSouthEast(), zoom);
-            
-            for (let x = minTile.x; x <= maxTile.x; x++) {
-                for (let y = minTile.y; y <= maxTile.y; y++) {
-                    tiles.push({ x, y, z: zoom });
-                }
-            }
-            
-            return tiles;
-        }
-
-        function latLngToTile(latLng, zoom) {
-            const lat = latLng.lat * Math.PI / 180;
-            const n = Math.pow(2, zoom);
-            return {
-                x: Math.floor(n * (latLng.lng + 180) / 360),
-                y: Math.floor(n * (1 - Math.asinh(Math.tan(lat)) / Math.PI) / 2)
-            };
-        }
-
-        function compositeTileData(tileData, tile, targetData, width, height, bounds, zoom) {
-            // This is a simplified compositing function
-            // In practice, you'd need proper coordinate transformation
-            const tileSize = 256;
-            const pixelsPerTile = tileSize * tileSize;
-            
-            if (tileData.length < pixelsPerTile * 3) return;
-            
-            // Simple compositing - would need proper geo-referencing in practice
-            for (let i = 0; i < Math.min(targetData.length / 3, tileData.length / 3); i++) {
-                targetData[i * 3] = tileData[i * 3] || 0;
-                targetData[i * 3 + 1] = tileData[i * 3 + 1] || 0;
-                targetData[i * 3 + 2] = tileData[i * 3 + 2] || 0;
-            }
-        }
-
-        function generateMockEmbeddings(width, height) {
-            // Simulate 1024-dimensional embeddings reduced to 3 PCA components
-            const embeddings = new Float32Array(width * height * 3);
-            
-            // Create spatially coherent embedding patterns
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const i = (y * width + x) * 3;
-                    
-                    // Normalize coordinates
-                    const nx = x / width;
-                    const ny = y / height;
-                    
-                    // Create 3 principal components with different spatial patterns
-                    // PC1: Large-scale horizontal gradient (geological patterns)
-                    let pc1 = Math.sin(nx * Math.PI * 2) * 0.5 + 0.5;
-                    pc1 += Math.random() * 0.2 - 0.1; // Add noise
-                    
-                    // PC2: Vertical gradient with noise (elevation/climate)
-                    let pc2 = ny * 0.7 + Math.sin(ny * Math.PI * 4) * 0.3;
-                    pc2 += Math.random() * 0.25 - 0.125;
-                    
-                    // PC3: Cellular/patchy patterns (land use)
-                    let pc3 = Math.sin(nx * Math.PI * 8) * Math.cos(ny * Math.PI * 6) * 0.5 + 0.5;
-                    pc3 += Math.random() * 0.3 - 0.15;
-                    
-                    // Add some correlation between components (realistic for embeddings)
-                    const correlation = 0.2;
-                    pc2 += pc1 * correlation;
-                    pc3 += (pc1 + pc2) * correlation * 0.5;
-                    
-                    // Normalize to [0, 1]
-                    embeddings[i] = Math.max(0, Math.min(1, pc1));
-                    embeddings[i + 1] = Math.max(0, Math.min(1, pc2));
-                    embeddings[i + 2] = Math.max(0, Math.min(1, pc3));
-                }
-            }
-            
-            return embeddings;
-        }
-
-        function drawEmbeddingVisualization() {
-            if (!embeddingData) return;
-            
-            embeddingCtx.clearRect(0, 0, embeddingCanvas.width, embeddingCanvas.height);
-            
-            const opacity = parseInt(document.getElementById('embeddingOpacity').value) / 100;
-            if (opacity === 0) return;
-            
-            const width = embeddingCanvas.width;
-            const height = embeddingCanvas.height;
-            const imageData = embeddingCtx.createImageData(width, height);
-            
-            // Convert PCA components to RGB false-color visualization
-            for (let i = 0; i < embeddingData.length / 3; i++) {
-                const pc1 = embeddingData[i * 3];
-                const pc2 = embeddingData[i * 3 + 1];
-                const pc3 = embeddingData[i * 3 + 2];
-                
-                // Map PCA components to RGB channels
-                imageData.data[i * 4] = Math.floor(pc1 * 255);     // Red = PC1
-                imageData.data[i * 4 + 1] = Math.floor(pc2 * 255); // Green = PC2
-                imageData.data[i * 4 + 2] = Math.floor(pc3 * 255); // Blue = PC3
-                imageData.data[i * 4 + 3] = Math.floor(opacity * 255); // Alpha
-            }
-            
-            embeddingCtx.putImageData(imageData, 0, 0);
-        }
-
-        function generateSyntheticImageData(width, height) {
-            // Generate synthetic RGB data that varies across the image
-            // In a real implementation, this would be actual satellite imagery
-            const pixels = new Uint8ClampedArray(width * height * 4);
-            
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const i = (y * width + x) * 4;
-                    
-                    // Create varied terrain-like colors
-                    const normalizedX = x / width;
-                    const normalizedY = y / height;
-                    
-                    // Simulate different terrain types
-                    if (normalizedX < 0.3) {
-                        // Water-like (blue)
-                        pixels[i] = 50 + Math.random() * 50;     // R
-                        pixels[i + 1] = 100 + Math.random() * 50; // G
-                        pixels[i + 2] = 150 + Math.random() * 100; // B
-                    } else if (normalizedX < 0.6) {
-                        // Vegetation-like (green)
-                        pixels[i] = 50 + Math.random() * 80;     // R
-                        pixels[i + 1] = 100 + Math.random() * 100; // G
-                        pixels[i + 2] = 50 + Math.random() * 80;  // B
-                    } else {
-                        // Urban/desert-like (brown/gray)
-                        pixels[i] = 120 + Math.random() * 80;    // R
-                        pixels[i + 1] = 100 + Math.random() * 70; // G
-                        pixels[i + 2] = 80 + Math.random() * 60;  // B
-                    }
-                    
-                    pixels[i + 3] = 255; // Alpha
-                }
-            }
-            
-            return pixels;
-        }
-
-        async function performClassification() {
-            const sensitivity = parseInt(document.getElementById('sensitivity').value);
-            
-            // Determine data source for classification
-            let dataSource;
-            if (embeddingSource !== 'mock' && currentGeoraster && showEmbeddings) {
-                dataSource = 'georaster';
-            } else if (embeddingSource === 'mock' && showEmbeddings && embeddingData) {
-                dataSource = 'embeddings';
-            } else {
-                dataSource = 'rgb';
-            }
-            
-            // Get training data from pins
-            const trainingData = {};
-            
-            for (const pin of pins) {
-                let featureVector;
-                
-                if (dataSource === 'georaster') {
-                    // Extract values from georaster at pin location
-                    const values = await getGeoRasterValuesAtPoint(pin.latlng);
-                    if (values && values.length >= 3) {
-                        featureVector = {
-                            pc1: values[0] || 0,
-                            pc2: values[1] || 0,
-                            pc3: values[2] || 0
-                        };
-                    } else {
-                        continue; // Skip this pin if no data
-                    }
-                } else {
-                    // Use existing canvas-based approach
-                    const pixelPos = map.latLngToContainerPoint(pin.latlng);
-                    const x = Math.floor(pixelPos.x);
-                    const y = Math.floor(pixelPos.y);
-                    
-                    if (x >= 0 && x < imageData.width && y >= 0 && y < imageData.height) {
-                        if (dataSource === 'embeddings') {
-                            const i = (y * imageData.width + x) * 3;
-                            featureVector = {
-                                pc1: embeddingData[i],
-                                pc2: embeddingData[i + 1],
-                                pc3: embeddingData[i + 2]
-                            };
-                        } else {
-                            const i = (y * imageData.width + x) * 4;
-                            featureVector = {
-                                r: imageData.pixels[i],
-                                g: imageData.pixels[i + 1],
-                                b: imageData.pixels[i + 2]
-                            };
-                        }
-                    } else {
-                        continue;
-                    }
-                }
-                
-                if (!trainingData[pin.className]) {
-                    trainingData[pin.className] = [];
-                }
-                trainingData[pin.className].push(featureVector);
-            }
-
-            if (Object.keys(trainingData).length === 0) {
-                alert('No valid training data found. Please add pins in areas with embedding data.');
-                return;
-            }
-
-            // Classify all pixels (for canvas-based approach)
-            if (dataSource !== 'georaster') {
-                classificationResults = new Uint8ClampedArray(imageData.width * imageData.height * 4);
-                let classifiedPixels = 0;
-                
-                for (let y = 0; y < imageData.height; y++) {
-                    for (let x = 0; x < imageData.width; x++) {
-                        const i = (y * imageData.width + x) * 4;
-                        
-                        let pixelFeatures;
-                        if (dataSource === 'embeddings') {
-                            const embeddingIndex = (y * imageData.width + x) * 3;
-                            pixelFeatures = {
-                                pc1: embeddingData[embeddingIndex],
-                                pc2: embeddingData[embeddingIndex + 1],
-                                pc3: embeddingData[embeddingIndex + 2]
-                            };
-                        } else {
-                            pixelFeatures = {
-                                r: imageData.pixels[i],
-                                g: imageData.pixels[i + 1],
-                                b: imageData.pixels[i + 2]
-                            };
-                        }
-                        
-                        const bestClass = findBestClass(pixelFeatures, trainingData, sensitivity, dataSource);
-                        
-                        if (bestClass) {
-                            const classColor = hexToRgb(classes[bestClass].color);
-                            classificationResults[i] = classColor.r;
-                            classificationResults[i + 1] = classColor.g;
-                            classificationResults[i + 2] = classColor.b;
-                            classificationResults[i + 3] = 128;
-                            classifiedPixels++;
-                        } else {
-                            classificationResults[i + 3] = 0;
-                        }
-                    }
-                }
-                
-                classificationResults.classifiedPixels = classifiedPixels;
-                classificationResults.totalPixels = imageData.width * imageData.height;
-            } else {
-                // For georaster, we'll create a simplified classification overlay
-                // This could be enhanced to do full raster classification
-                alert('Classification on georaster data is simplified in this demo. For full raster classification, consider using a backend service.');
-                return;
-            }
-            
-            classificationResults.dataSource = dataSource;
-        }
-
-        async function getGeoRasterValuesAtPoint(latLng) {
-            if (!currentGeoraster) return null;
-            
-            try {
-                // Get values at specific lat/lng from georaster
-                const values = await geoblaze.identify(currentGeoraster, [latLng.lng, latLng.lat]);
-                return values;
-            } catch (error) {
-                console.warn('Could not get georaster values at point:', error);
-                return null;
-            }
-        }
-
-        function findBestClass(pixelFeatures, trainingData, sensitivity, dataSource) {
-            let bestClass = null;
-            let bestDistance = Infinity;
-            
-            Object.keys(trainingData).forEach(className => {
-                const samples = trainingData[className];
-                const avgDistance = samples.reduce((sum, sample) => {
-                    return sum + featureDistance(pixelFeatures, sample, dataSource);
-                }, 0) / samples.length;
-                
-                if (avgDistance < bestDistance && avgDistance < sensitivity) {
-                    bestDistance = avgDistance;
-                    bestClass = className;
-                }
-            });
-            
-            return bestClass;
-        }
-
-        function featureDistance(features1, features2, dataSource) {
-            if (dataSource === 'embeddings') {
-                const d1 = features1.pc1 - features2.pc1;
-                const d2 = features1.pc2 - features2.pc2;
-                const d3 = features1.pc3 - features2.pc3;
-                return Math.sqrt(d1 * d1 + d2 * d2 + d3 * d3);
-            } else {
-                const dr = features1.r - features2.r;
-                const dg = features1.g - features2.g;
-                const db = features1.b - features2.b;
-                return Math.sqrt(dr * dr + dg * dg + db * db);
-            }
-        }
-
-        function hexToRgb(hex) {
-            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? {
-                r: parseInt(result[1], 16),
-                g: parseInt(result[2], 16),
-                b: parseInt(result[3], 16)
-            } : null;
-        }
-
-        function drawClassification() {
-            if (!classificationResults) return;
-            
-            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-            
-            const opacity = parseInt(document.getElementById('opacity').value) / 100;
-            overlayCtx.globalAlpha = opacity;
-            
-            const imageData = overlayCtx.createImageData(overlayCanvas.width, overlayCanvas.height);
-            
-            // Copy classification results to canvas
-            for (let i = 0; i < classificationResults.length; i++) {
-                imageData.data[i] = classificationResults[i];
-            }
-            
-            overlayCtx.putImageData(imageData, 0, 0);
-            overlayCtx.globalAlpha = 1.0;
-        }
-
-        function clearClassification() {
-            classificationResults = null;
-            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-            updateStats();
-        }
-
-        function clearAllPins() {
-            pins.forEach(pin => map.removeLayer(pin.marker));
-            pins = [];
-            Object.keys(classes).forEach(className => {
-                classes[className].count = 0;
-            });
-            updateClassDisplay();
-            updateStats();
-        }
-
-        function exportData() {
-            const data = {
-                classes: classes,
-                pins: pins.map(pin => ({
-                    latlng: pin.latlng,
-                    className: pin.className
-                })),
-                mapCenter: map.getCenter(),
-                mapZoom: map.getZoom()
-            };
-            
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'satellite_classification_data.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function updateStats() {
-            const totalPins = pins.length;
-            const totalClasses = Object.keys(classes).length;
-            const classifiedPercentage = classificationResults ? 
-                Math.round((classificationResults.classifiedPixels / classificationResults.totalPixels) * 100) : 0;
-            
-            const dataSourceText = classificationResults?.dataSource === 'embeddings' ? ' (Embeddings)' : ' (RGB)';
-            
-            document.getElementById('stats').innerHTML = `
-                Pins: ${totalPins} | Classes: ${totalClasses} | Classified: ${classifiedPercentage}%${classificationResults ? dataSourceText : ''}
-            `;
-        }
-
-        // Initialize the application when the page loads
-        document.addEventListener('DOMContentLoaded', init);
+        
+        // Start initialization
+        document.addEventListener('DOMContentLoaded', initializeApp);
     </script>
 </body>
-</html>
+</html>.map = null;
+                this.embeddingData = null;
+                this.embeddingLayer = null;
+                this.classificationLayer = null;
+                this.currentMode = 'train';
+                this.classes = [];
+                this.trainingData = [];
+                this.classificationResults = null;
+                this.selectedClass = null;
+                this.currentLocation = null;
+                this.markers = [];
+                
+                this.initializeMap();
+                this.setupEventListeners();
+                this.updateClassDisplay();
+                this.populateBandSelectors();
+            }
+            
+            getApiBase() {
+                const apiBase = document.getElementById('apiBase').value.trim();
+                return apiBase || 'http://localhost:3000';
+            }
+            
+            initializeMap() {
+                this.map = L.map('map').setView([52.05, 0.15], 13);
+                
+                // Add OpenStreetMap base layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(this.map);
+                
+                // Add click handler for training/classification
+                this.map.on('click', (e) => {
+                    this.handleMapClick(e);
+                });
+            }
+            
+            setupEventListeners() {
+                document.getElementById('loadLocation').addEventListener('click', () => {
+                    this.loadEmbeddings();
+                });
+                
+                document.getElementById('updateVisualization').addEventListener('click', () => {
+                    this.updateVisualization();
+                });
+                
+                document.getElementById('addClass').addEventListener('click', () => {
+                    this.addClass();
+                });
+                
+                document.getElementById('clearClasses').addEventListener('click', () => {
+                    this.clearClasses();
+                });
+                
+                document.getElementById('classifyAll').addEventListener('click', () => {
+                    this.classifyAllPixels();
+                });
+                
+                document.getElementById('exportResults').addEventListener('click', () => {
+                    this.exportResults();
+                });
+                
+                // Mode selector
+                document.querySelectorAll('.mode-button').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.mode-button').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentMode = e.target.dataset.mode;
+                    });
+                });
+                
+                // Threshold slider
+                document.getElementById('threshold').addEventListener('input', (e) => {
+                    document.getElementById('thresholdValue').textContent = e.target.value;
+                });
+                
+                // Clusters slider
+                document.getElementById('nClusters').addEventListener('input', (e) => {
+                    document.getElementById('nClustersValue').textContent = e.target.value;
+                });
+                
+                // Enter key for class name
+                document.getElementById('newClassName').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.addClass();
+                    }
+                });
+            }
+            
+            populateBandSelectors() {
+                const selectors = ['bandR', 'bandG', 'bandB'];
+                const defaults = [0, 1, 2];
+                
+                selectors.forEach((id, index) => {
+                    const select = document.getElementById(id);
+                    select.innerHTML = '';
+                    for (let i = 0; i < 128; i++) {
+                        const option = document.createElement('option');
+                        option.value = i;
+                        option.textContent = `Band ${i}`;
+                        if (i === defaults[index]) {
+                            option.selected = true;
+                        }
+                        select.appendChild(option);
+                    }
+                });
+            }
+            
+            async loadEmbeddings() {
+                const lat = parseFloat(document.getElementById('latInput').value);
+                const lon = parseFloat(document.getElementById('lonInput').value);
+                const year = parseInt(document.getElementById('yearInput').value);
+                
+                if (isNaN(lat) || isNaN(lon) || isNaN(year)) {
+                    this.showStatus('Please enter valid coordinates and year', 'error');
+                    return;
+                }
+                
+                this.showStatus('Loading GeoTessera embeddings...', 'loading');
+                
+                try {
+                    const apiBase = this.getApiBase();
+                    const response = await fetch(`${apiBase}/api/load_embedding?lat=${lat}&lon=${lon}&year=${year}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error);
+                    }
+                    
+                    this.embeddingData = result.data;
+                    this.currentLocation = { lat, lon, year };
+                    
+                    // Update map center and zoom to show the tile area
+                    this.map.setView([lat + 0.05, lon + 0.05], 12);
+                    
+                    // Update embedding info
+                    const info = this.embeddingData;
+                    document.getElementById('embeddingDetails').innerHTML = 
+                        `Location: ${lat.toFixed(3)}, ${lon.toFixed(3)}<br>
+                         Year: ${year}<br>
+                         Original: ${info.original_shape[0]} × ${info.original_shape[1]}<br>
+                         Channels: ${info.original_shape[2]}<br>
+                         Downsampled: ${info.downsampled_shape[0]} × ${info.downsampled_shape[1]}<br>
+                         Coverage: ~0.1° × 0.1° (~10km × 10km)`;
+                    
+                    // Load initial visualization
+                    await this.updateVisualization();
+                    
+                    this.showStatus('GeoTessera embeddings loaded successfully!', 'success');
+                    
+                } catch (error) {
+                    console.error('Error loading embeddings:', error);
+                    this.showStatus(`Error loading embeddings: ${error.message}`, 'error');
+                }
+            }
+            
+            async updateVisualization() {
+                if (!this.embeddingData || !this.currentLocation) {
+                    this.showStatus('Please load embeddings first', 'error');
+                    return;
+                }
+                
+                const rBand = parseInt(document.getElementById('bandR').value);
+                const gBand = parseInt(document.getElementById('bandG').value);
+                const bBand = parseInt(document.getElementById('bandB').value);
+                const normalize = document.getElementById('normalizeVis').checked;
+                
+                this.showStatus('Generating visualization...', 'loading');
+                
+                try {
+                    const apiBase = this.getApiBase();
+                    const response = await fetch(`${apiBase}/api/visualize_bands`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            lat: this.currentLocation.lat,
+                            lon: this.currentLocation.lon,
+                            year: this.currentLocation.year,
+                            bands: [rBand, gBand, bBand],
+                            normalize: normalize
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error);
+                    }
+                    
+                    // Remove existing embedding layer
+                    if (this.embeddingLayer) {
+                        this.map.removeLayer(this.embeddingLayer);
+                    }
+                    
+                    // Add new embedding layer with correct bounds (0.1 degree tile)
+                    const bounds = [
+                        [this.currentLocation.lat, this.currentLocation.lon],
+                        [this.currentLocation.lat + 0.1, this.currentLocation.lon + 0.1]
+                    ];
+                    
+                    this.embeddingLayer = L.imageOverlay(result.data.image, bounds, {
+                        opacity: 0.8,
+                        interactive: true
+                    }).addTo(this.map);
+                    
+                    this.showStatus('Visualization updated', 'success');
+                    
+                } catch (error) {
+                    console.error('Error updating visualization:', error);
+                    this.showStatus(`Error updating visualization: ${error.message}`, 'error');
+                }
+            }
+            
+            async handleMapClick(e) {
+                if (!this.embeddingData || !this.currentLocation) {
+                    this.showStatus('Please load embeddings first', 'error');
+                    return;
+                }
+                
+                // Convert lat/lon to pixel coordinates within the 0.1 degree tile
+                const { lat, lon } = this.currentLocation;
+                const tileLatStart = lat;
+                const tileLonStart = lon;
+                const tileLatEnd = lat + 0.1;
+                const tileLonEnd = lon + 0.1;
+                
+                // Check if click is within the tile bounds
+                if (e.latlng.lat < tileLatStart || e.latlng.lat > tileLatEnd ||
+                    e.latlng.lng < tileLonStart || e.latlng.lng > tileLonEnd) {
+                    this.showStatus('Please click within the embedding tile area', 'error');
+                    return;
+                }
+                
+                // Convert to pixel coordinates
+                const [height, width] = this.embeddingData.original_shape;
+                const x = Math.floor((e.latlng.lng - tileLonStart) / 0.1 * width);
+                const y = Math.floor((e.latlng.lat - tileLatStart) / 0.1 * height);
+                
+                if (this.currentMode === 'train') {
+                    this.addTrainingSample(x, y, e.latlng);
+                } else {
+                    this.classifyPixel(x, y, e.latlng);
+                }
+            }
+            
+            addTrainingSample(x, y, latlng) {
+                if (!this.selectedClass) {
+                    this.showStatus('Please select a class first', 'error');
+                    return;
+                }
+                
+                // Add training sample
+                this.trainingData.push({
+                    x: x,
+                    y: y,
+                    class_id: this.selectedClass.id,
+                    latlng: latlng
+                });
+                
+                // Update class count
+                this.selectedClass.count++;
+                
+                // Add marker to map
+                const marker = L.circleMarker(latlng, {
+                    color: this.selectedClass.color,
+                    fillColor: this.selectedClass.color,
+                    fillOpacity: 0.8,
+                    radius: 4,
+                    weight: 2
+                }).addTo(this.map);
+                
+                this.markers.push(marker);
+                
+                this.updateClassDisplay();
+                this.showStatus(`Added training sample for ${this.selectedClass.name}`, 'success');
+            }
+            
+            async classifyPixel(x, y, latlng) {
+                if (this.trainingData.length === 0) {
+                    this.showStatus('Please add training samples first', 'error');
+                    return;
+                }
+                
+                this.showStatus('Classifying pixel...', 'loading');
+                
+                try {
+                    const apiBase = this.getApiBase();
+                    const response = await fetch(`${apiBase}/api/get_pixel_embedding`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            lat: this.currentLocation.lat,
+                            lon: this.currentLocation.lon,
+                            year: this.currentLocation.year,
+                            x: x,
+                            y: y
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error);
+                    }
+                    
+                    // For now, show pixel info
+                    const stats = result.data.stats;
+                    this.showStatus(`Pixel embedding: min=${stats.min.toFixed(3)}, max=${stats.max.toFixed(3)}, mean=${stats.mean.toFixed(3)}`, 'success');
+                    
+                } catch (error) {
+                    console.error('Error classifying pixel:', error);
+                    this.showStatus(`Error classifying pixel: ${error.message}`, 'error');
+                }
+            }
+            
+            async classifyAllPixels() {
+                if (!this.embeddingData || !this.currentLocation) {
+                    this.showStatus('Please load embeddings first', 'error');
+                    return;
+                }
+                
+                const method = document.getElementById('classificationMethod').value;
+                
+                if (method === 'knn' && this.trainingData.length === 0) {
+                    this.showStatus('Please add training samples for KNN classification', 'error');
+                    return;
+                }
+                
+                this.showStatus('Classifying all pixels...', 'loading');
+                this.showProgress(0);
+                
+                try {
+                    const apiBase = this.getApiBase();
+                    const requestData = {
+                        lat: this.currentLocation.lat,
+                        lon: this.currentLocation.lon,
+                        year: this.currentLocation.year,
+                        training_samples: this.trainingData,
+                        method: method,
+                        threshold: parseFloat(document.getElementById('threshold').value),
+                        n_clusters: parseInt(document.getElementById('nClusters').value),
+                        class_colors: this.getClassColors()
+                    };
+                    
+                    const response = await fetch(`${apiBase}/api/classify_pixels`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error);
+                    }
+                    
+                    this.classificationResults = result.data;
+                    
+                    // Add classification layer to map
+                    this.updateClassificationLayer();
+                    
+                    // Show classification statistics
+                    const stats = result.data.class_stats;
+                    const total = Object.values(stats).reduce((sum, count) => sum + count, 0);
+                    const classified = total - (stats['-1'] || 0);
+                    
+                    this.showStatus(`Classification complete! ${classified} of ${total} pixels classified`, 'success');
+                    this.hideProgress();
+                    
+                } catch (error) {
+                    console.error('Error classifying pixels:', error);
+                    this.showStatus(`Error classifying pixels: ${error.message}`, 'error');
+                    this.hideProgress();
+                }
+            }
+            
+            updateClassificationLayer() {
+                if (!this.classificationResults) return;
+                
+                // Remove existing classification layer
+                if (this.classificationLayer) {
+                    this.map.removeLayer(this.classificationLayer);
+                }
+                
+                // Add new classification layer
+                const bounds = [
+                    [this.currentLocation.lat, this.currentLocation.lon],
+                    [this.currentLocation.lat + 0.1, this.currentLocation.lon + 0.1]
+                ];
+                
+                this.classificationLayer = L.imageOverlay(this.classificationResults.visualization, bounds, {
+                    opacity: 0.6,
+                    interactive: false
+                }).addTo(this.map);
+            }
+            
+            getClassColors() {
+                const colors = {};
+                this.classes.forEach(cls => {
+                    colors[cls.id] = cls.color;
+                });
+                return colors;
+            }
+            
+            addClass() {
+                const name = document.getElementById('newClassName').value.trim();
+                if (!name) {
+                    this.showStatus('Please enter a class name', 'error');
+                    return;
+                }
+                
+                const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+                const color = colors[this.classes.length % colors.length];
+                
+                const newClass = {
+                    id: this.classes.length,
+                    name: name,
+                    color: color,
+                    count: 0
+                };
+                
+                this.classes.push(newClass);
+                this.selectedClass = newClass; // Auto-select new class
+                document.getElementById('newClassName').value = '';
+                this.updateClassDisplay();
+                this.showStatus(`Added class: ${name}`, 'success');
+            }
+            
+            updateClassDisplay() {
+                const classList = document.getElementById('classList');
+                classList.innerHTML = '';
+                
+                this.classes.forEach(classObj => {
+                    const div = document.createElement('div');
+                    div.className = 'class-item';
+                    if (this.selectedClass && this.selectedClass.id === classObj.id) {
+                        div.style.border = '2px solid #4CAF50';
+                    }
+                    
+                    div.innerHTML = `
+                        <div class="class-color" style="background-color: ${classObj.color}"></div>
+                        <div class="class-info">
+                            <div class="class-name">${classObj.name}</div>
+                            <div class="class-count">${classObj.count} samples</div>
+                        </div>
+                        <div class="class-actions">
+                            <button onclick="classifier.selectClass(${classObj.id})">Select</button>
+                            <button onclick="classifier.removeClass(${classObj.id})">Remove</button>
+                        </div>
+                    `;
+                    
+                    classList.appendChild(div);
+                });
+                
+                if (this.classes.length === 0) {
+                    classList.innerHTML = '<div style="color: #aaa; font-size: 12px;">No classes defined</div>';
+                }
+            }
+            
+            selectClass(classId) {
+                this.selectedClass = this.classes.find(c => c.id === classId);
+                this.updateClassDisplay();
+                this.showStatus(`Selected class: ${this.selectedClass.name}`, 'success');
+            }
+            
+            removeClass(classId) {
+                // Remove class
+                this.classes = this.classes.filter(c => c.id !== classId);
+                
+                // Remove associated training data
+                this.trainingData = this.trainingData.filter(sample => sample.class_id !== classId);
+                
+                // Remove markers for this class
+                this.markers = this.markers.filter(marker => {
+                    // This is a simplification - in a real implementation you'd track markers by class
+                    return true;
+                });
+                
+                // Clear selected class if it was removed
+                if (this.selectedClass && this.selectedClass.id === classId) {
+                    this.selectedClass = null;
+                }
+                
+                this.updateClassDisplay();
+                this.showStatus('Class removed', 'success');
+            }
+            
+            clearClasses() {
+                this.classes = [];
+                this.trainingData = [];
+                this.selectedClass = null;
+                this.classificationResults = null;
+                
+                // Clear all markers
+                this.markers.forEach(marker => this.map.removeLayer(marker));
+                this.markers = [];
+                
+                // Clear classification layer
+                if (this.classificationLayer) {
+                    this.map.removeLayer(this.classificationLayer);
+                    this.classificationLayer = null;
+                }
+                
+                this
